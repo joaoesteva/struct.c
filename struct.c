@@ -1,125 +1,346 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-void cadastrarCategoria(struct Categoria v[], int *qtd) {
-    if (*qtd >= TAM) {
-        printf("Erro: Capacidade maxima do vetor atingida (%d).\n", TAM);
+#define MAX_FAVORITOS 10
+
+typedef struct {
+    int id;
+    char titulo[50];
+    char categoria[30];
+    int duracao;
+} Video;
+
+typedef struct {
+    int id;
+    char nome[50];
+    int favoritos[MAX_FAVORITOS];
+    int qtdFavoritos;
+} Usuario;
+
+void cadastrarVideo() {
+    FILE *arq = fopen("videos.dat", "ab");
+
+    if (arq == NULL) {
+        printf("Erro ao abrir arquivo!\n");
         return;
     }
 
-    int codigoProposto;
-    int codigoExiste;
-    
-    do {
-        codigoExiste = 0;
-        printf("Digite o codigo da nova categoria: ");
-        scanf("%d", &codigoProposto);
-        getchar(); 
+    Video v;
 
-        for (int i = 0; i < *qtd; i++) {
-            if (v[i].codigo == codigoProposto) {
-                printf("Erro: Ja existe uma categoria com o codigo %d. Tente outro.\n", codigoProposto);
-                codigoExiste = 1;
-                break;
-            }
-        }
-    } while (codigoExiste);
+    printf("ID do video: ");
+    scanf("%d", &v.id);
 
-    v[*qtd].codigo = codigoProposto;
+    getchar();
 
-    printf("Digite o nome da categoria: ");
-    fgets(v[*qtd].nome, 50, stdin);
-    v[*qtd].nome[strcspn(v[*qtd].nome, "\n")] = '\0';
+    printf("Titulo: ");
+    fgets(v.titulo, 50, stdin);
+    v.titulo[strcspn(v.titulo, "\n")] = 0;
 
-    (*qtd)++;
-    printf("Categoria cadastrada com sucesso!\n");
+    printf("Categoria: ");
+    fgets(v.categoria, 30, stdin);
+    v.categoria[strcspn(v.categoria, "\n")] = 0;
+
+    printf("Duracao (min): ");
+    scanf("%d", &v.duracao);
+
+    fwrite(&v, sizeof(Video), 1, arq);
+
+    fclose(arq);
+
+    printf("Video cadastrado!\n");
 }
 
-void imprimirCategorias(struct Categoria v[], int qtd) {
-    if (qtd == 0) {
-        printf("Nenhuma categoria cadastrada.\n");
+void listarVideos() {
+    FILE *arq = fopen("videos.dat", "rb");
+
+    if (arq == NULL) {
+        printf("Nenhum video cadastrado.\n");
         return;
     }
 
-    printf("\n--- LISTA DE CATEGORIAS ---\n");
-    for (int i = 0; i < qtd; i++) {
-        printf("Codigo: %d | Nome: %s\n", v[i].codigo, v[i].nome);
+    Video v;
+
+    while (fread(&v, sizeof(Video), 1, arq)) {
+        printf("\nID: %d\n", v.id);
+        printf("Titulo: %s\n", v.titulo);
+        printf("Categoria: %s\n", v.categoria);
+        printf("Duracao: %d min\n", v.duracao);
     }
-    printf("---------------------------\n");
+
+    fclose(arq);
 }
 
-void imprimirProdutos(struct Produto vp[], int qtdProdutos, struct Categoria vc[], int qtdCategorias) {
-    if (qtdProdutos == 0) {
-        printf("Nenhum produto cadastrado.\n");
+void buscarVideoPorID(int id) {
+    FILE *arq = fopen("videos.dat", "rb");
+
+    if (arq == NULL) {
+        printf("Arquivo inexistente.\n");
         return;
     }
 
-    printf("\n--- LISTA DE PRODUTOS ---\n");
-    for (int i = 0; i < qtdProdutos; i++) {
-        char nomeCategoria[50] = "Categoria nao encontrada";
-        for (int j = 0; j < qtdCategorias; j++) {
-            if (vc[j].codigo == vp[i].categoria) {
-                strcpy(nomeCategoria, vc[j].nome);
-                break;
-            }
-        }
-        
-        double precoReal = vp[i].preco / 100.0;
-
-        printf("Codigo: %d\n", vp[i].codigo);
-        printf("Titulo: %s\n", vp[i].titulo);
-        printf("Descricao: %s\n", vp[i].descricao);
-        printf("Categoria: %s\n", nomeCategoria);
-        printf("Preco: R$ %.2f\n", precoReal);
-        printf("-------------------------\n");
-    }
-}
-
-void selectionSortPorDescricao(struct Produto v[], int qtd) {
-    for (int i = 0; i < qtd - 1; i++) {
-        int min_idx = i;
-        
-        for (int j = i + 1; j < qtd; j++) {
-            if (strcmp(v[j].descricao, v[min_idx].descricao) < 0) {
-                min_idx = j;
-            }
-        }
-
-        if (min_idx != i) {
-            struct Produto temp = v[i];
-            v[i] = v[min_idx];
-            v[min_idx] = temp;
-        }
-    }
-    printf("Produtos ordenados por descricao com sucesso!\n");
-}
-
-void buscaBinariaPorDescricao(struct Produto v[], int qtd, char *x) {
-    int inicio = 0;
-    int fim = qtd - 1;
+    Video v;
     int encontrado = 0;
 
-    while (inicio <= fim) {
-        int meio = inicio + (fim - inicio) / 2;
+    while (fread(&v, sizeof(Video), 1, arq)) {
+        if (v.id == id) {
+            printf("\nVideo encontrado:\n");
+            printf("Titulo: %s\n", v.titulo);
+            printf("Categoria: %s\n", v.categoria);
+            printf("Duracao: %d min\n", v.duracao);
 
-        int comp = strcmp(x, v[meio].descricao);
-
-        if (comp == 0) {
-            printf("\nProduto Encontrado:\n");
-            printf("Codigo: %d | Titulo: %s | Preco: R$ %.2f\n", 
-                   v[meio].codigo, v[meio].titulo, v[meio].preco / 100.0);
             encontrado = 1;
             break;
-        } 
-        else if (comp > 0) {
-            inicio = meio + 1;
-        } /
-        else {
-            fim = meio - 1;
         }
     }
 
     if (!encontrado) {
-        printf("Produto com a descricao \"%s\" nao foi encontrado.\n", x);
+        printf("Video nao encontrado.\n");
     }
+
+    fclose(arq);
+}
+
+void cadastrarUsuario() {
+    FILE *arq = fopen("usuarios.dat", "ab");
+
+    if (arq == NULL) {
+        printf("Erro ao abrir arquivo!\n");
+        return;
+    }
+
+    Usuario u;
+
+    printf("ID do usuario: ");
+    scanf("%d", &u.id);
+
+    getchar();
+
+    printf("Nome: ");
+    fgets(u.nome, 50, stdin);
+    u.nome[strcspn(u.nome, "\n")] = 0;
+
+    printf("Quantidade de favoritos: ");
+    scanf("%d", &u.qtdFavoritos);
+
+    for (int i = 0; i < u.qtdFavoritos; i++) {
+        printf("ID do video favorito %d: ", i + 1);
+        scanf("%d", &u.favoritos[i]);
+    }
+
+    fwrite(&u, sizeof(Usuario), 1, arq);
+
+    fclose(arq);
+
+    printf("Usuario cadastrado!\n");
+}
+
+void listarUsuarios() {
+    FILE *arq = fopen("usuarios.dat", "rb");
+
+    if (arq == NULL) {
+        printf("Nenhum usuario cadastrado.\n");
+        return;
+    }
+
+    Usuario u;
+
+    while (fread(&u, sizeof(Usuario), 1, arq)) {
+        printf("\nID: %d\n", u.id);
+        printf("Nome: %s\n", u.nome);
+
+        printf("Favoritos: ");
+
+        for (int i = 0; i < u.qtdFavoritos; i++) {
+            printf("%d ", u.favoritos[i]);
+        }
+
+        printf("\n");
+    }
+
+    fclose(arq);
+}
+
+void relatorioUsuariosFavoritos() {
+    FILE *arqUsuarios = fopen("usuarios.dat", "rb");
+    FILE *arqVideos = fopen("videos.dat", "rb");
+
+    if (arqUsuarios == NULL || arqVideos == NULL) {
+        printf("Arquivos inexistentes.\n");
+        return;
+    }
+
+    Usuario u;
+    Video v;
+
+    while (fread(&u, sizeof(Usuario), 1, arqUsuarios)) {
+
+        printf("\nUsuario: %s\n", u.nome);
+        printf("Videos favoritados:\n");
+
+        for (int i = 0; i < u.qtdFavoritos; i++) {
+
+            rewind(arqVideos);
+
+            while (fread(&v, sizeof(Video), 1, arqVideos)) {
+
+                if (v.id == u.favoritos[i]) {
+                    printf("- %s\n", v.titulo);
+                }
+            }
+        }
+    }
+
+    fclose(arqUsuarios);
+    fclose(arqVideos);
+}
+
+void atualizarVideo() {
+    FILE *arq = fopen("videos.dat", "rb+");
+
+    if (arq == NULL) {
+        printf("Arquivo inexistente.\n");
+        return;
+    }
+
+    int id;
+    printf("Digite o ID do video: ");
+    scanf("%d", &id);
+
+    Video v;
+
+    while (fread(&v, sizeof(Video), 1, arq)) {
+
+        if (v.id == id) {
+
+            getchar();
+
+            printf("Novo titulo: ");
+            fgets(v.titulo, 50, stdin);
+            v.titulo[strcspn(v.titulo, "\n")] = 0;
+
+            printf("Nova categoria: ");
+            fgets(v.categoria, 30, stdin);
+            v.categoria[strcspn(v.categoria, "\n")] = 0;
+
+            printf("Nova duracao: ");
+            scanf("%d", &v.duracao);
+
+            fseek(arq, -sizeof(Video), SEEK_CUR);
+
+            fwrite(&v, sizeof(Video), 1, arq);
+
+            printf("Video atualizado!\n");
+
+            fclose(arq);
+            return;
+        }
+    }
+
+    printf("Video nao encontrado.\n");
+
+    fclose(arq);
+}
+
+void removerVideo() {
+
+    FILE *original = fopen("videos.dat", "rb");
+    FILE *novo = fopen("temp.dat", "wb");
+
+    if (original == NULL || novo == NULL) {
+        printf("Erro nos arquivos.\n");
+        return;
+    }
+
+    int id;
+    printf("ID do video a remover: ");
+    scanf("%d", &id);
+
+    Video v;
+
+    while (fread(&v, sizeof(Video), 1, original)) {
+
+        if (v.id != id) {
+            fwrite(&v, sizeof(Video), 1, novo);
+        }
+    }
+
+    fclose(original);
+    fclose(novo);
+
+    remove("videos.dat");
+    rename("temp.dat", "videos.dat");
+
+    printf("Video removido!\n");
+}
+
+int main(void) {
+
+    int op;
+
+    do {
+
+        printf("\n===== MENU =====\n");
+        printf("1 - Cadastrar video\n");
+        printf("2 - Listar videos\n");
+        printf("3 - Buscar video por ID\n");
+        printf("4 - Cadastrar usuario\n");
+        printf("5 - Listar usuarios\n");
+        printf("6 - Atualizar video\n");
+        printf("7 - Remover video\n");
+        printf("8 - Relatorio usuarios e favoritos\n");
+        printf("0 - Sair\n");
+
+        printf("Opcao: ");
+        scanf("%d", &op);
+
+        switch(op) {
+
+            case 1:
+                cadastrarVideo();
+                break;
+
+            case 2:
+                listarVideos();
+                break;
+
+            case 3: {
+                int id;
+                printf("ID: ");
+                scanf("%d", &id);
+                buscarVideoPorID(id);
+                break;
+            }
+
+            case 4:
+                cadastrarUsuario();
+                break;
+
+            case 5:
+                listarUsuarios();
+                break;
+
+            case 6:
+                atualizarVideo();
+                break;
+
+            case 7:
+                removerVideo();
+                break;
+
+            case 8:
+                relatorioUsuariosFavoritos();
+                break;
+
+            case 0:
+                printf("Encerrando...\n");
+                break;
+
+            default:
+                printf("Opcao invalida!\n");
+        }
+
+    } while(op != 0);
+
+    return 0;
 }
